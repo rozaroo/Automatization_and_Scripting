@@ -7,19 +7,30 @@ import schedule
 import time
 import os
 # Load the dataset
-df = pd.read_csv("sports_data_missing.csv")
-# limpiar espacios en nombres de columnas
-df.columns = df.columns.str.strip()
+def load_data(file):
+    df = pd.read_csv(file)
+    # limpiar espacios en nombres de columnas
+    df.columns = df.columns.str.strip()
+    return df
+
+
 # Display the first few rows
-print(df.head())
+#print(df.head())
 
 # Display info about DataFrame
-df.info()
+#df.info()
 
-# Drop rows with invalid data
-df = df.dropna()
+def clean_data(df):
+    # Drop rows with invalid data
+    df = df.dropna()
+    # Remove all players with 0 walks or 0 strikeouts
+    df = df[(df['BB'] != 0) & (df['SO'] != 0)]
+    # Create column with Strikeout/Walk Ratio
+    df["SO/BB"] = df["SO"] / df["BB"]
+    return df
+
 # Inspect the cleaned data
-df.info()
+#df.info()
 
 # Function to create scatter plot
 def create_scatter_plot(df, x_col, y_col, title):
@@ -58,21 +69,20 @@ plt.title('Distribution of Hits')
 plt.grid(True)
 plt.show()
 
-# Remove all players with 0 walks or 0 strikeouts
-df = df[(df['BB'] != 0) & (df['SO'] != 0)]
 
-# Create column with Strikeout/Walk Ratio
-df["SO/BB"] = df["SO"] / df["BB"]
+def analyze_data(df):
+    stats = {
+        # Calculate means
+        "avg_singles": df['Singles'].mean()
+        "avg_doubles": df['Doubles'].mean()
+        "avg_triples": df['Triples'].mean()
+        "avg_hr": df['HR'].mean()
+        # Calculate max and min SO/BB ratio
+        "max_ratio": df["SO/BB"].max()
+        "min_ratio": df["SO/BB"].min()
+    }
+    return stats
 
-# Calculate means
-average_singles = df['Singles'].mean()
-average_doubles = df['Doubles'].mean()
-average_triples = df['Triples'].mean()
-average_hr = df['HR'].mean()
-
-# Calculate max and min SO/BB ratio
-max_SO_BB = df["SO/BB"].max()
-min_SO_BB = df["SO/BB"].min()
 
 print(f"Singles: {average_singles}")
 print(f"Doubles: {average_doubles}")
@@ -82,7 +92,7 @@ print(f"Max SO/BB Ratio: {max_SO_BB}")
 print(f"Min SO/BB Ratio: {min_SO_BB}")
 
 # Set up SendGrid API credentials
-SENDGRID_API_KEY = 'F4kG7dL9pM2aB5nR8eJ1cK6oI3hN4gD5qE6fT7yU8wX9zA0bC1vM2aB5nR8eJ1cK6oI3h' # Replace with your API Key
+SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
 
 sg = sendgrid.SendGridAPIClient(SENDGRID_API_KEY)
 
@@ -104,9 +114,8 @@ except Exception as e:
 def email_message():
     pass
 
-# Schedule the job to run every day at 9 AM
-schedule.every().day.at("09:00").do(email_message)
-
+current_file = "statistics_current.csv"
+old_file = "statistics_backup.csv"
 if os.path.exists(current_file):
     # Delete the old file
     if os.path.exists(old_file):
@@ -120,3 +129,9 @@ if os.path.exists(current_file):
 # Save the DataFrame to the new CSV file
 df.to_csv(current_file, index=False)
 logging.info("Statistics written to file")
+logging.basicConfig(level=logging.INFO)
+# Schedule the job to run every day at 9 AM
+schedule.every().day.at("09:00").do(email_message)
+while True:
+    schedule.run_pending()
+    time.sleep(60)
