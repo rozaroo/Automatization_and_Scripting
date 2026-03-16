@@ -6,20 +6,14 @@ import logging
 import schedule
 import time
 import os
+logging.basicConfig(level=logging.INFO)
+
 # Load the dataset
 def load_data(file):
     df = pd.read_csv(file)
     # limpiar espacios en nombres de columnas
     df.columns = df.columns.str.strip()
     return df
-
-
-# Display the first few rows
-#print(df.head())
-
-# Display info about DataFrame
-#df.info()
-
 def clean_data(df):
     # Drop rows with invalid data
     df = df.dropna()
@@ -28,6 +22,16 @@ def clean_data(df):
     # Create column with Strikeout/Walk Ratio
     df["SO/BB"] = df["SO"] / df["BB"]
     return df
+df = load_data("baseball_stats.csv")
+df = clean_data(df)
+
+# Display the first few rows
+#print(df.head())
+
+# Display info about DataFrame
+#df.info()
+
+
 
 # Inspect the cleaned data
 #df.info()
@@ -73,46 +77,43 @@ plt.show()
 def analyze_data(df):
     stats = {
         # Calculate means
-        "avg_singles": df['Singles'].mean()
-        "avg_doubles": df['Doubles'].mean()
-        "avg_triples": df['Triples'].mean()
-        "avg_hr": df['HR'].mean()
+        "avg_singles": df['Singles'].mean(),
+        "avg_doubles": df['Doubles'].mean(),
+        "avg_triples": df['Triples'].mean(),
+        "avg_hr": df['HR'].mean(),
         # Calculate max and min SO/BB ratio
-        "max_ratio": df["SO/BB"].max()
+        "max_ratio": df["SO/BB"].max(),
         "min_ratio": df["SO/BB"].min()
     }
+    print(f"Singles: {stats['avg_singles']}")
+    print(f"Doubles: {stats['avg_doubles']}")
+    print(f"Triples: {stats['avg_triples']}")
+    print(f"Home Runs: {stats['avg_hr']}")
+    print(f"Max SO/BB Ratio: {stats['max_ratio']}")
+    print(f"Min SO/BB Ratio: {stats['min_ratio']}")
     return stats
 
+stats = analyze_data(df)
 
-print(f"Singles: {average_singles}")
-print(f"Doubles: {average_doubles}")
-print(f"Triples: {average_triples}")
-print(f"Home Runs: {average_hr}")
-print(f"Max SO/BB Ratio: {max_SO_BB}")
-print(f"Min SO/BB Ratio: {min_SO_BB}")
-
-# Set up SendGrid API credentials
-SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
-
-sg = sendgrid.SendGridAPIClient(SENDGRID_API_KEY)
-
-message = Mail(
-    from_email = 'admin@example.com',
-    to_emails = 'rshah@example.com',
-    subject = 'Analysis completed for today',
-    plain_text_content = 'Baseball analysis is completed for today. Please view the statistics_CURRENT.csv to review details.'# YOUR CODE HERE - Add content
-)
-
-try:
-    response = sg.send(message)
-    logging.info("Email Sent Successfully") 
-    
-except Exception as e:
-    logging.info("Email Message Failure") 
 
 # Mock function for emailing a message. Call this function using schedule below.
 def email_message():
-    pass
+    # Set up SendGrid API credentials
+    SENDGRID_API_KEY = os.getenv("SENDGRID_API_KEY")
+    sg = sendgrid.SendGridAPIClient(SENDGRID_API_KEY)
+    message = Mail(
+        from_email = 'admin@example.com',
+        to_emails = 'rshah@example.com',
+        subject = 'Analysis completed for today',
+        plain_text_content = 'Baseball analysis is completed for today. Please view the statistics_CURRENT.csv to review details.'# YOUR CODE HERE - Add content
+    )
+    try:
+        response = sg.send(message)
+        logging.info("Email Sent Successfully") 
+    
+    except Exception as e:
+        logging.info("Email Message Failure") 
+    
 
 current_file = "statistics_current.csv"
 old_file = "statistics_backup.csv"
@@ -129,9 +130,10 @@ if os.path.exists(current_file):
 # Save the DataFrame to the new CSV file
 df.to_csv(current_file, index=False)
 logging.info("Statistics written to file")
-logging.basicConfig(level=logging.INFO)
+
 # Schedule the job to run every day at 9 AM
 schedule.every().day.at("09:00").do(email_message)
+#Run scheduled tasks
 while True:
     schedule.run_pending()
     time.sleep(60)
